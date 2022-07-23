@@ -1,0 +1,23 @@
+Todo - Protocol.
+
+Step 1 : Flooding the packats around the phantom nodes.[Done]
+
+Step 2 : Implement the attacker model.[Done]
+
+Step 3 : Accomplished a task, Celebrate!. [Done]
+
+Step 4 : Flooding concept.
+
+        Do changes in get_square() and get_square2() module! for flooding the packets!.
+        Where all the nodes inside the phantom square and including the phantom square's 
+        node's power will be reducted 2 times!.
+
+Step 5 : Attacker model.
+
+        Attacker model keeps tracks of the node which sents packet to it and the attacker clone it's position as well.
+        
+        i) (iter->x == attacker_x && iter->y == attacker_y) attacker_x = source_x,attacker_y = source_y;
+        ii) create a condition in all transaction of packages.
+                1)if condition is true,let the transaction does and so on, if false, then the package should be cancelled
+                and move on to the next package.
+
