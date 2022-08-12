@@ -5,16 +5,12 @@
       "name": "C/C++ Runner: Debug Session",
       "type": "lldb",
       "request": "launch",
-      "args": [
-        ""
-      ],
+      "args": [],
       "stopAtEntry": true,
+      "externalConsole": false,
       "cwd": "/Users/sivasakthivel/Desktop/RESEARCH PAPER",
-      "environment": [],
       "program": "/Users/sivasakthivel/Desktop/RESEARCH PAPER/build/Debug/outDebug",
-      "internalConsoleOptions": "openOnSessionStart",
-      "MIMode": "lldb",
-      "externalConsole": false
+      "MIMode": "lldb"
     }
   ]
 }

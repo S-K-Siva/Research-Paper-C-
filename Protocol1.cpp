@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <vector>
+#include <fstream>
 #include <ctype.h>
 #include <stdlib.h>
 #include <math.h>
@@ -9,8 +10,8 @@
 #include <iterator>
 #include <string>
 #define OFFSET 50
-#define v 10
-#define total_packet_sending 10
+#define v 11
+#define total_packet_sending 5
 #include <set>
 #include <random>
 #include <ostream>
@@ -43,7 +44,8 @@ struct node{
     long double power;
     struct package_data *package;
     packs packages;
-    
+    int im_attacker = 0;
+    int index_1,index_2;
     vector<int> neighbours;
     vector<node> phantom_sqaure,closure_neighbour,equal_neighbour,forther_neighbour;
     
@@ -113,11 +115,16 @@ class board{
         int source_x,source_y,source_id;//To get the equal,forther,closer neighbours.
         int Packets_received_counts = 0;
         int Packets_cancelled_counts = 0;
+        int attacker_id = -1;
+        vector<int> attacker_paths;
         std::set<node> phantom1,phantom2;
-        int attacker_i = 0; //by default the attacker will be in base station (0,0)
-        int attacker_j = 0;
+        fstream data_file;
+        int tot_inter_nodes = 0;
+        int won_packs = 0,lost_packs = 0;
+
     board(){
         cout << "Constructor working..." << m << endl;
+        
     if(m%2 == 0){
         m = m+1;
         }
@@ -190,24 +197,25 @@ class board{
 
     }
     }
-
-    void attacker_shift(int i,int j){
-        attacker_i = i;
-        attacker_j = j;
-    }
-
-    int check_attacker(int src_x,int src_y,int des_x,int des_y){
-        if(des_x == this->attacker_i && des_y == this->attacker_j){
-            this->attacker_shift(src_x,src_y);
-            return 1;
+    
+    void initialize_attacker_in_board(){
+        if(array[5][5] != NULL){
+            array[5][5]->im_attacker = 1;
         }
-        return 0;
+        else{
+            array[5][5] = (struct node *)malloc(sizeof(struct node));
+            array[5][5]->im_attacker = 1;
+            
+        }
     }
     void get_neighbours(){
+        
         //Getting neighbours
     int max_val = offset *(m/2);
     for(int i = 0;i<m;i++){
         for(int j = 0;j<m;j++){
+            array[i][j]->index_1 = i;
+            array[i][j]->index_2 = j;
             array[i][j]->power = 0.5;
             cout << array[i][j]->ID << "'s power is:"<<array[i][j]->power<<endl;
             if((array[i][j]->y == max_val) && (array[i][j]->x == -1 * max_val)){
@@ -503,12 +511,21 @@ class board{
     }
     void print_all_powers(){
     cout << "Let's see all the powers of the nodes..."<<endl;
+    if(!data_file)
+        data_file.open("data.csv",ios::out);
+    else
+        data_file.open("data.csv",ios::app);
+    data_file << endl << endl << "Nodes" << ":" "Power" << endl <<endl;
     for(int i = 0;i<m;i++){
         for(int j = 0;j<m;j++){
             cout << array[i][j]->ID<<":"<<array[i][j]->power << "\t" ;
+            data_file << array[i][j]->ID << ":" << array[i][j]->power << endl;
         }
+        
         cout << endl<<endl;
+
     }
+    data_file.close();
 }
     void set_package(node *source,string data){
         cout<<"in-process"<<endl;
@@ -519,7 +536,7 @@ class board{
         cout << "Test:"<<source->package->data<<endl;
         cout << "Package fixed!"<<endl;
     }
-    void get_square2(int source_x,int source_y){
+    int get_square2(int source_x,int source_y){
         int h_max = ceil((v/2)/4);
         int s1 = source_x - (h_max+2);
         int e1 = source_y +(h_max+2);
@@ -531,9 +548,11 @@ class board{
         int e4 = source_y -(h_max+2);
         int start1,end1,start2,end2,start3,end3,start4,end4;
         start1 = s1;start2 = s2;start3 = s3;start4 = s4;end1 = e1;end2 = e2;end3 = e3;end4= e4;
+        /*
         cout << "Start1:"<<start1 << "end1:"<<end1<<endl<<" start2:"<< start2<<" end2:"<< end2<<endl;
         cout << "start3:"<<start3 << " end3:"<<end3<<endl<<" start4:" << start4<<" end4:"<<end4<<endl;
         cout << "Size:" << phantom1.size() << endl;
+        */
         if(start1 > -1 && start1 < 11&& end1 > -1 && end1 < 11){
             phantom2.insert(*array[start1][end1]);
         }
@@ -564,18 +583,39 @@ class board{
             end4 = 0;
             end3 = 0;
         }
+       for(auto it : phantom2){
+        if(it.im_attacker == 1){
+            this->Packets_cancelled_counts++;
+            this->attacker_id = it.ID;
+            cout << "The attacker is :" << it.ID << endl;
+            this->attacker_paths.push_back(it.ID);
+            cout << "ATTACKER CAUGHT" << endl;
+            return 1;
+        }
+       }
+       /*
         cout << "Start1:"<<start1 << "end1:"<<end1<<endl<<" start2:"<< start2<<" end2:"<< end2<<endl;
         cout << "start3:"<<start3 << " end3:"<<end3<<endl<<" start4:" << start4<<" end4:"<<end4<<endl;
+        */
         for(int i = start4;i<=start3;i++){
             for(int j = end4;j<=end1;j++){
+                /*
+                if(array[i][j]->im_attacker == 1){
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = array[i][j]->ID;
+                    cout << "The ATTACKER is :" << array[i][j]->ID << endl;
+                    cout << "ATTACKER CAUGHT" << endl;
+                    return 1;
+                }
+                */
                 cout << "Power reduction for the node :"<<array[i][j]->ID<<endl;
                 power_reduce(array[i][j]);
                 power_reduce(array[i][j]);
             }
         }
-        
+        return 0;
     }
-    void get_square(int source_x,int source_y){
+    int get_square(int source_x,int source_y){
         int h_max = ceil((v/2)/4);
         cout << "Hmax:"<<h_max<<endl;
         int s1 = source_x - (h_max+2);
@@ -588,8 +628,10 @@ class board{
         int e4 = source_y -(h_max+2);
         int start1,end1,start2,end2,start3,end3,start4,end4;
         start1 = s1;start2 = s2;start3 = s3;start4 = s4;end1 = e1;end2=e2;end3=e3;end4=e4;
+        /*
         cout << "Start1:"<<start1 << "end1:"<<end1<<endl<<" start2:"<< start2<<" end2:"<< end2<<endl;
         cout << "start3:"<<start3 << " end3:"<<end3<<endl<<" start4:" << start4<<" end4:"<<end4<<endl;
+        */
         if(start1 < 0 || start4 < 0){
             start1 = 0;
             start4 = 0;
@@ -607,8 +649,10 @@ class board{
             end4 = 0;
             end3 = 0;
         }
+        /*
         cout << "Start1:"<<start1 << "end1:"<<end1<<endl<<" start2:"<< start2<<" end2:"<< end2<<endl;
         cout << "start3:"<<start3 << " end3:"<<end3<<endl<<" start4:" << start4<<" end4:"<<end4<<endl;
+        */
         if(s4 > -1 && s1 > -1 && s4 == s1){
             for(int i = end4;i<=end1;i++){
                 phantom1.insert(*array[s4][i]);
@@ -630,19 +674,39 @@ class board{
                 phantom1.insert(*array[s3][i]);
             }
         }
+        
+        for(auto it : phantom2){
+            if(it.im_attacker == 1){
+                this->Packets_cancelled_counts++;
+                this->attacker_id = it.ID;
+                cout << "The ATTACKER is :" << it.ID << endl;
+                this->attacker_paths.push_back(it.ID);
+            cout << "ATTACKER CAUGHT" << endl;
+            return 1;
+            }
+        }
         cout << "The size of the Phantom square is:"<<phantom1.size()<<endl;
         cout << "The elements are..."<<endl;
-        set<node>::iterator iter = phantom1.begin();
-        for(iter;iter!=phantom1.end();iter++){
+        set<node>::iterator it = phantom1.begin();
+        for(auto iter = it;iter!=phantom1.end();iter++){
             cout <<iter->ID<<endl;
         }
         for(int i = start4;i<=start3;i++){
             for(int j = end4;j<=end1;j++){
+                /*
+                if(array[i][j]->im_attacker == 1){
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = array[i][j]->ID;
+                    cout << "ATTACKER CAUGHT" << endl;
+                    return 1;
+                }
+                */
                 cout << "Power reduction for the node :"<<array[i][j]->ID<<endl;
                 power_reduce(array[i][j]);
                 power_reduce(array[i][j]);
             }
         }
+        return 0;
     }
     
     
@@ -667,7 +731,8 @@ class board{
         cout << "Packet packed successfully!" << endl;
     }
     
-    void SP(int src_ii,int src_jj,int des_ii,int des_jj){
+    int SP(int src_ii,int src_jj,int des_ii,int des_jj){
+        cout << "SHORTEST PATH ALGORITHM EXECUTION STARTS.." << endl;
         int src_i = src_ii;
         int src_j = src_jj;
         int des_i = des_ii;
@@ -688,6 +753,17 @@ class board{
                 iter->package = (pack *)malloc(sizeof(pack));
                 set_packdata(iter);
                 iter->package->data = array[src_i][src_j]->package->data;
+                if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                    this->Packets_cancelled_counts++;
+                    this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
+            
                 power_reduction(iter,array[src_i][src_j]);
                array[src_i][src_j]->package = NULL;
                 cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
@@ -702,6 +778,17 @@ class board{
                 set_packdata(iter);
                 power_reduction(iter,array[src_i][src_j]);
                 iter->package->data = array[src_i][src_j]->package->data;
+                if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                    this->Packets_cancelled_counts++;
+                   this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
+            
                 array[src_i][src_j]->package = NULL;
                 cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
                 
@@ -715,6 +802,17 @@ class board{
                 iter->package = (pack *)malloc(sizeof(pack));
                 set_packdata(iter);
                 iter->package->data = array[src_i][src_j]->package->data;
+                if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                    this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
+            
                 power_reduction(iter,array[src_i][src_j]);
                 array[src_i][src_j]->package = NULL;
                 cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
@@ -726,6 +824,17 @@ class board{
                 iter->package = (pack *)malloc(sizeof(pack));
                 set_packdata(iter);
                 iter->package->data = array[src_i][src_j]->package->data;
+               if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
+            
                 power_reduction(iter,array[src_i][src_j]);
                 array[src_i][src_j]->package = NULL;
                 cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
@@ -740,6 +849,17 @@ class board{
                     iter->package = (pack *)malloc(sizeof(pack));
                     set_packdata(iter);
                     iter->package->data = array[src_i][src_j]->package->data;
+                    if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                   this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
+            
                     power_reduction(iter,array[src_i][src_j]);
                     array[src_i][src_j]->package = NULL;
                     cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
@@ -752,6 +872,17 @@ class board{
                     iter->package = (pack *)malloc(sizeof(pack));
                     set_packdata(iter);
                     iter->package->data = array[src_i][src_j]->package->data;
+                    if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                   this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
+            
                     power_reduction(iter,array[src_i][src_j]);
                     array[src_i][src_j]->package = NULL;
                     cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
@@ -765,6 +896,17 @@ class board{
                     iter->package = (pack *)malloc(sizeof(pack));
                     set_packdata(iter);
                     iter->package->data = array[src_i][src_j]->package->data;
+                   if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                   this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
+            
                     power_reduction(iter,array[src_i][src_j]);
                     array[src_i][src_j]->package = NULL;
                     
@@ -778,6 +920,17 @@ class board{
                     iter->package = (pack *)malloc(sizeof(pack));
                     set_packdata(iter);
                     iter->package->data = array[src_i][src_j]->package->data;
+                   if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                   this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
+            
                     power_reduction(iter,array[src_i][src_j]);
                     array[src_i][src_j]->package = NULL;
                     
@@ -794,9 +947,18 @@ class board{
             iter->package = (pack *)malloc(sizeof(pack));
             set_packdata(iter);
             iter->package->data = array[src_i][src_j]->package->data;
+           if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                    this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
             power_reduction(iter,array[src_i][src_j]);
-            array[src_i][src_j]->package = NULL;
-            
+            array[src_i][src_j]->package = NULL; 
             cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
             src_i = src_i + 1;
         }
@@ -806,6 +968,16 @@ class board{
             iter->package = (pack *)malloc(sizeof(pack));
             set_packdata(iter);
             iter->package->data = array[src_i][src_j]->package->data;
+            if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                     this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
             power_reduction(iter,array[src_i][src_j]);
             array[src_i][src_j]->package = NULL;
             cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
@@ -817,6 +989,16 @@ class board{
             iter->package = (pack *)malloc(sizeof(pack));
             set_packdata(iter);
             iter->package->data = array[src_i][src_j]->package->data;
+           if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                    this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
             power_reduction(iter,array[src_i][src_j]);
             array[src_i][src_j]->package = NULL;
             cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
@@ -828,6 +1010,16 @@ class board{
             iter->package = (pack *)malloc(sizeof(pack));
             set_packdata(iter);
             iter->package->data = array[src_i][src_j]->package->data;
+            if(iter->im_attacker == 1){
+                    iter->im_attacker = 0;
+                    array[src_i][src_j]->im_attacker = 1;
+                    cout << "The old attacker is :" << iter->ID << endl;
+                    cout << "The new attacker is :" << array[src_i][src_j]->ID << endl;
+                    this->attacker_paths.push_back(array[src_i][src_j]->ID);
+                    this->Packets_cancelled_counts++;
+                    this->attacker_id = iter->ID;
+                    return 1;
+                }
             power_reduction(iter,array[src_i][src_j]);
            array[src_i][src_j]->package = NULL;
             cout << "The Transfer status: "<< array[src_i][src_j]->ID << " -> "<<iter->ID<<endl;
@@ -838,30 +1030,42 @@ class board{
             cout << "Mission Success" << endl;
             cout << array[des_i][des_j]->package->data<<endl;
         }
+        return 0;
     }
     void check_pack(node *source){
         cout << source->package->data<<endl;
         cout << "Passed" << endl;
     }
-    void forward_random_walk(node &source){
-        
+    int forward_random_walk(node &source){
         cout << "Source id:"<<source.ID<<endl;
         cout << "Source's package:"<<source.package->data<<endl;
         
             for(int i = 0;i<array[source_x][source_y]->closure_neighbour.size();i++){
             if(array[source_x][source_y]->closure_neighbour[i].ID == -1){
+                
                 cout << "working" << endl;
+                
                 array[5][5]->package = (pack *)malloc(sizeof(pack));
                 set_packdata(array[5][5]);
                 cout << "alloted"<<endl;
                 array[5][5]->package->data = source.package->data;
+                if(array[5][5]->im_attacker == 1){
+                    cout << "The old attacker is :" << array[5][5]->ID << endl;
+                    cout << "The new attacker is :" << source.ID << endl;
+                    array[5][5]->im_attacker = 0;
+                    source.im_attacker = 1;
+                    this->Packets_cancelled_counts++;
+                    attacker_id = source.ID;
+                     this->attacker_paths.push_back(source.ID);
+                    return 1;
+                }
                 power_reduction(array[source_x][source_y],array[5][5]);
                 cout << "alloted and shifted"<<endl;
                 array[source_x][source_y]->package = NULL;
                 this->get_3N(array[source_x][source_y]->closure_neighbour[i].ID); 
                 this->Packets_received_counts++;
                 cout << "Package shifted to base station"<<endl;
-                return;
+                return 0;
             }
         }
         
@@ -878,11 +1082,25 @@ class board{
         iter = &array[source_x][source_y]->closure_neighbour[new_ind];
         set_packdata(iter);
         array[source_x][source_y]->closure_neighbour[new_ind].package->data = source.package->data;
+        struct node getter = array[source_x][source_y]->closure_neighbour[new_ind];
+        //source_x = source.index_1;
+        //source_y = source.index_2;
+        if(getter.im_attacker == 1){
+            cout << "The old attacker is:"<<getter.ID << endl;
+            cout << "The new attacker is:"<< source.ID << endl;
+            getter.im_attacker = 0;
+            source.im_attacker = 1;
+            this->attacker_paths.push_back(source.ID);
+            this->attacker_id = source.ID;
+            this->Packets_cancelled_counts++;
+            return 1;
+        }
         cout << "Package shifted" << endl;
         power_reduction(iter,array[source_x][source_y]);
         
         array[source_x][source_y]->package = NULL;
         forward_random_walk(array[source_x][source_y]->closure_neighbour[new_ind]);
+        return 0;
     }
     
            
@@ -906,6 +1124,10 @@ class board{
                     src_j = j;
                     found = 1;
                     //total packets sending...
+                    if(!data_file)
+        data_file.open("data.csv",ios::out);
+    else
+        data_file.open("data.csv",ios::app);
                     for(int i = 0;i<total_packet_sending;i++){
                         
                         cout<<"----------------------------------------------------------------------------------------------------------------------------"<<endl;
@@ -913,17 +1135,27 @@ class board{
                         cout << "\t\t\t\t\t\t\tPACKAGE NO :"<<i<<endl;
                         cout << endl<< endl <<endl<<endl<<endl;
                          cout<<"----------------------------------------------------------------------------------------------------------------------------"<<endl;
-                        
-
+                        cout << "ATTACKER ID :" << this->attacker_id << endl;
+                        data_file<<"----------------------------------------------------------------------------------------------------------------------------"<<endl;
+                        data_file << endl<< endl;
+                        data_file << "\t\t\t\t\t\t\tPACKAGE NO :"<<i<<endl;
+                        data_file << endl<< endl;
+                         data_file<<"----------------------------------------------------------------------------------------------------------------------------"<<endl;
+                        cout << "ATTACKER ID :" << this->attacker_id << endl;
                         cout << "Initial power of the source......"<<endl;
                         cout << "The power of the source node is:"<<array[src_i][src_j]->power<<endl;
                         long double initial_power = array[src_i][src_j]->power;
                     this->get_3N(id);
                     cout << endl<<endl<<endl<<endl<<endl<<endl<<endl<<endl;
                     this->print_all_powers();
-                    this->get_square(source_x,source_y);
+                    int cond1 = this->get_square(source_x,source_y);
+                    if(cond1 == 1){
+                        lost_packs++;
+                        continue;
+                    }
+        
+        cout << "----------------------------------------------------------------------------------------------------------------------------------------------------------"<<endl;
                     this->print_all_powers();
-                    
                     srand(time(0));
         int ind = rand()%phantom1.size();
         cout << "The random picked node is:";
@@ -947,20 +1179,83 @@ class board{
         }
         
         //cout << "Des i:"<<des_x<<" j:"<<des_y<<endl;
-        this->SP(source_x,source_y,des_x,des_y);
+        int sp1 = this->SP(source_x,source_y,des_x,des_y);
+        if(sp1){
+            lost_packs++;
+            continue;
+        }
+        cout << "----------------------------------------------------------------------------------------------------------------------------------------------------------"<<endl;
+                    
         //cout << "Package sent successfully!" << endl;
-        get_square2(des_x,des_y);
+        cout << "GET SQUARE 2 IS EXECUTING..." << endl;
+        int cond2 = this->get_square2(des_x,des_y);
+        if(cond2 == 1){
+            lost_packs++;
+            continue;
+        }
+       
+        cout << "----------------------------------------------------------------------------------------------------------------------------------------------------------"<<endl;
+        this->tot_inter_nodes += phantom2.size();
+        int number = 1;
+        for(auto it : phantom2){
+            int short_path_cond = 0,frw1 = 0;
+            
+            cout << "INTERMEDIATE NODE NO " << number << endl;
+            number++;
+                short_path_cond = this->SP(des_x,des_y,it.index_1,it.index_2);
+                cout << "Packet sent to the intermediate node " << number << " id is :" << it.ID << endl;
+                cout << "Packet is :" << this->array[it.index_1][it.index_2]->package->data;
+                if(this->array[des_x][des_y]->package == NULL){
+                    cout << "Pack is empty" << endl;
+                    this->array[des_x][des_y]->package = (pack *)malloc(sizeof(pack));
+                    cout << "Alloted" << endl;
+                    this->array[des_x][des_y]->package->data = this->array[it.index_1][it.index_2]->package->data;
+                    cout << "Pack is filled" << endl;
+                }
+                if(short_path_cond == 1){
+                    this->lost_packs++;
+                    continue;
+                }
+                cout << "Forward Random walk " << number << " starting......."<< endl<<endl<<endl<<endl;
+        
+             frw1 = this->forward_random_walk(*array[it.index_1][it.index_2]);
+        
+            cout << "Caught:" << frw1 << endl;
+            if(frw1 == 1) this->lost_packs++;cout << "ATTACKER DETECTED in FRW" << endl;continue;
+               
+                //this->array[des_x][des_y]->package->data = array[it.index_1][it.index_2]->package->data;
+               
+                if(phantom2.size() == 4){
+                it.package->k = 512;
+            }else if (phantom2.size() == 3){
+                it.package->k = 2048/3;
+            }
+            else if(phantom2.size() == 2){
+                it.package->k = 2048/2;
+            }else{
+                it.package->k = 2048;
+            }
+           
+            
+        }
+        this->won_packs++;
+        this->array[des_x][des_y]->package = NULL;
+        // if(short_path_cond == 1) continue;
+        // if(frw1 == 1) continue;
+        
+        /*          
         int ind2 = rand()%phantom2.size();
+        // UNDER CHANGES FOR INTERMEDIATE NODE SPLITTING AND SENDING THE PACKETS.
         set<node>::iterator inter_iter = phantom2.begin();
         advance(inter_iter,ind2);
         cout << inter_iter->ID << endl;
         int inter_des_x = 0,inter_des_y = 0;
         cout << "The Current node id is :"<< array[des_x][des_y]->ID<<endl;
+        int new_sp = 0;
         for(int i = 0;i<11;i++){
-            
             for(int j = 0;j< 11 ;j++){
                 if(array[i][j]->ID == inter_iter->ID){
-                    this->SP(des_x,des_y,i,j);
+                    new_sp = this->SP(des_x,des_y,i,j);
                     inter_des_x = i;
                     inter_des_y = j;
                  
@@ -968,18 +1263,28 @@ class board{
                 }
             }
         }
+        if(new_sp == 1) continue;
         
+        cout << "----------------------------------------------------------------------------------------------------------------------------------------------------------"<<endl;
+                    
         cout << "Inter_Pack_data:"<<array[inter_des_x][inter_des_y]->package->data<<endl;
         cout<<"Inter id:"<<array[inter_des_x][inter_des_y]->ID<<endl;
         this->get_3N(array[inter_des_x][inter_des_y]->ID); 
         cout << "The source id :"<<array[source_x][source_y]->ID<<endl;
         cout<<"Inter id:"<<array[inter_des_x][inter_des_y]->ID<<endl;
-        //this->FRW_mission(array[inter_des_x][inter_des_y]); 
-
         cout << "Forward Random walk starting......."<< endl<<endl<<endl<<endl;
-        this->forward_random_walk(*array[inter_des_x][inter_des_y]);
+        int frw1 = this->forward_random_walk(*array[inter_des_x][inter_des_y]);
+        
+        cout << "Caught:" << frw1 << endl;
+        if(frw1) continue;
+        */
+        cout << "----------------------------------------------------------------------------------------------------------------------------------------------------------"<<endl;  
         cout << "The Source id atlast is:"<<array[source_x][source_y]->ID<<endl;
-        cout << "The source id pack is:"<<array[source_x][source_y]->package->data<<endl;
+        cout << "The source id :" << array[source_x][source_y]->ID << endl;
+        if(array[source_x][source_y]->package == NULL){
+            cout << "The source id doesn't have package" << endl;
+        }
+        //cout << "The source id pack is:"<<array[source_x][source_y]->package->data<<endl;
         array[source_x][source_y]->power = 0.5;
         cout << "The power of the source is:"<<array[source_x][source_y]->power<<endl;
         if(array[src_i][src_j]->package == NULL) cout << "Yes, source doesn't have a package." << endl;
@@ -990,7 +1295,6 @@ class board{
     cout << "The power of the source node is:"<<array[src_i][src_j]->power<<endl;
     
     }
-
                 }
             }
             if(found == 0){
@@ -1000,23 +1304,32 @@ class board{
     
 
         }
-         
+        
         }
     
-
     
 };
 
 
 int main(){
+    freopen("input.txt", "r", stdin);
     board circuit;
+
     circuit.print_all_nodes();
     
     circuit.get_neighbours();
     circuit.print_node_with_neighbours();
-    
+    circuit.initialize_attacker_in_board();
     circuit.mission1();
     circuit.print_all_powers();
     cout<<circuit.Packets_received_counts<<endl;
+    cout << circuit.Packets_cancelled_counts<<endl;
+    cout << "The paths travelled by attacker are .." << endl;
+    cout << "Total moves by attacker:" <<  circuit.attacker_paths.size() << endl;
+    for(auto it : circuit.attacker_paths){
+        cout << it << endl;
+    }
+    cout << "Total inter_nodes are ..." << circuit.tot_inter_nodes << endl;
+    cout << "format : {won:lost} --> " << circuit.won_packs << ":" << circuit.lost_packs << endl;
     return 0;
 }
